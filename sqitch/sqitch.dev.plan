@@ -1,0 +1,5 @@
+%syntax-version=1.0.0
+%project=backend_service
+
+2022.10.07_15.40.29-base_tables_migrate 2022-10-07T22:43:16Z Evan Hughes <eshughes93@gmail.com> # base tables
+2022.10.07_15.43.43-base_indexes_migrate 2022-10-07T22:43:57Z Evan Hughes <eshughes93@gmail.com> # base indexes

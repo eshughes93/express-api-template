@@ -1,0 +1,91 @@
+version: '3'
+
+### Base docker file for local development
+services:
+  postgres:
+    build:
+      context: .
+      dockerfile: ./docker/postgres/Dockerfile
+    container_name: ts-postgres
+    restart: always
+    hostname: ts-postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+    networks:
+      - ts-network
+    environment:
+      TZ: UTC
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - '5434:5432'
+    volumes:
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d
+      - db:/var/lib/postgresql/data
+  api:
+    container_name: ts-api
+    build:
+      target: build
+      context: .
+      dockerfile: ./Dockerfile
+      args:
+        GITHUB_TOKEN: ${GITHUB_TOKEN}
+    command: npm run start:dev
+    ports:
+      - '3001:3001'
+    networks:
+      - ts-network
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      - postgres
+    tty: true
+    links:
+      - postgres
+    environment:
+      TZ: UTC
+      NODE_ENV: ${NODE_ENV}
+      LOG_LEVEL: ${LOG_LEVEL}
+      APP_PORT: ${APP_PORT}
+      HOST: ${HOST}
+      APP: ${APP}
+      SSL_MODE_NO_VERIFY: ${SSL_MODE_NO_VERIFY}
+      POOL_SIZE: ${POOL_SIZE}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_HOST: ${POSTGRES_HOST} ### for mac to resolve internal docker host
+      POSTGRES_DB: ${POSTGRES_DB}
+
+  sqitch:
+    build:
+      context: .
+      dockerfile: Dockerfile.sqitch
+    hostname: sqitch
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./sqitch:/sqitch
+    environment:
+      TZ: UTC
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGHOST: ${POSTGRES_HOST}
+      PGPORT: ${POSTGRES_PORT}
+      PGDATABASE: ${POSTGRES_DB}
+    command: [
+      "sqitch deploy -f sqitch.plan"
+    ]
+    networks:
+      - ts-network
+networks:
+  ts-network:
+volumes:
+  db:
+    driver: local

@@ -1,0 +1,58 @@
+# This workflow is used to executed the unit tests with in a project
+
+name: UnitTest CI
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      default_branch:
+        description: 'The base branch like development'
+        required: true
+        default: 'main'
+
+jobs:
+
+  # This workflow contains a single job called "testing"
+  testing:
+    strategy:
+      matrix:
+        node-version: [17, 18]
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+
+      - name: workflow_dispatch checkout
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        uses: actions/checkout@v2
+        with:
+          ref: ${{github.event.inputs.default_branch}} ## Need to change this to your base branch
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout Branch
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        uses: actions/checkout@v2
+
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+
+      - name: install dependencies
+        #  Skip post-install scripts here, as a malicious
+        # script could steal NODE_AUTH_TOKEN.
+        run: npm ci --ignore-scripts
+        env:
+          # note: the NPM_TOKEN needs to be a Personal Access Token
+          # not a GITHUB_TOKEN: see https://github.com/actions/setup-node/issues/49
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_SECRET }}
+
+      - run: npm run test:unit
